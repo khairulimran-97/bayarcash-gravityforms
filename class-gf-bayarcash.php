@@ -663,8 +663,8 @@ public function get_payment_status_name($payment_status_code) {
 }
   public function uninstall() {
     $option_names = array(
-      'gf_chip_global_key_validation',
-      'gf_chip_global_error_code'
+      'gf_bayarcash_global_key_validation',
+      'gf_bayarcash_global_error_code'
     );
     
     foreach( $option_names as $option_name ){
