@@ -4,7 +4,7 @@
  * Plugin Name: Bayarcash for Gravity Forms
  * Plugin URI: https://wordpress.org/plugins/bayarcash-for-woocommerce/
  * Description: Bayarcash - Better Payment & Business Solutions
- * Version: 1.0.4
+ * Version: 1.0.0
  * Author: Bayarcash In Sdn Bhd
  * Author URI: http://www.bayarcash.com
  * 
