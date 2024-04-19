@@ -112,25 +112,36 @@ class GF_Bayarcash extends GFPaymentAddOn {
     return ob_get_clean();
   }
 
-  public function global_keys_fields() {
-    return array(
-      array(
-        'name'     => 'pat_key',
-        'label'    => esc_html__( 'Personal Access Token (PAT)', 'gravityformsbayarcash' ),
-        'type'     => 'textarea',
-        'required' => true,
-        'tooltip'  => '<h6>' . esc_html__( 'Personal Access Token (PAT)', 'gravityformsbayarcash' ) . '</h6>' . esc_html__( 'You can get PAT from your email after successful register account', 'gravityformsbayarcash' )
-      ),
-      array(
-        'name'     => 'fpx_portal_key',
-        'label'    => esc_html__( 'Portal Key', 'gravityformsbayarcash' ),
-        'type'     => 'text',
-        'required' => true,
-        'tooltip'  => '<h6>' . esc_html__( 'Portal Key', 'gravityformsbayarcash' ) . '</h6>' . esc_html__( 'Change this portal key with yours. Login to Bayarcash console > Portal.', 'gravityformsbayarcash' )
-      ),
+	public function global_keys_fields() {
+		return array(
+			array(
+				'name'     => 'pat_key',
+				'label'    => esc_html__( 'Personal Access Token (PAT)', 'gravityformsbayarcash' ) . $this->get_verify_button_html(),
+				'type'     => 'textarea',
+				'required' => true,
+				'tooltip'  => '<h6>' . esc_html__( 'Personal Access Token (PAT)', 'gravityformsbayarcash' ) . '</h6>' . esc_html__( 'You can get PAT from your email after successful register account', 'gravityformsbayarcash' )
+			),
+			array(
+				'name'     => 'fpx_portal_key',
+				'label'    => esc_html__( 'Portal Key', 'gravityformsbayarcash' ),
+				'type'     => 'text',
+				'required' => true,
+				'tooltip'  => '<h6>' . esc_html__( 'Portal Key', 'gravityformsbayarcash' ) . '</h6>' . esc_html__( 'Change this portal key with yours. Login to Bayarcash console > Portal.', 'gravityformsbayarcash' )
+			),
+		);
+	}
 
-    );
-  }
+	private function get_verify_button_html() {
+		ob_start();
+		?>
+        <button class="button-primary verify-token-button" id="verify-token-button">
+			<?php esc_html_e('Verify Token', 'gravityformsbayarcash'); ?>
+        </button>
+        <span id="verify-token-status"><?php echo esc_html(get_option('verify_token_status', 'Click the button to verify PAT Token')); ?></span>
+		<?php
+		return ob_get_clean();
+	}
+
   
   
   public function global_account_status_description() {
@@ -195,7 +206,7 @@ class GF_Bayarcash extends GFPaymentAddOn {
       'fields'     => array(
         array(
           'name'     => 'pat_key',
-          'label'    => esc_html__( 'Personal Access Token (PAT)', 'gravityformsbayarcash' ),
+          'label'    => esc_html__( 'Personal Access Token (PAT)', 'gravityformsbayarcash' ).$this->get_verify_button_html(),
           'type'     => 'textarea',
           'class'    => 'medium',
           'required' => true,
