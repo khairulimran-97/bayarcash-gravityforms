@@ -25,7 +25,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
         // Send AJAX request
         var xhr = new XMLHttpRequest();
-        xhr.open("POST", "https://console.bayar.cash/api/transactions", true);
+        xhr.open("POST", "https://console.bayarcash.dev/api/transactions", true);
         xhr.setRequestHeader("Accept", "application/json");
         xhr.setRequestHeader("Authorization", "Bearer " + patKey);
         xhr.onreadystatechange = function() {
