@@ -42,9 +42,7 @@ class GF_BAYARCASH_Bootstrap {
 		// Include necessary PHP files
 		require_once GF_BAYARCASH_PLUGIN_PATH . '/api.php';
 		require_once GF_BAYARCASH_PLUGIN_PATH . '/class-gf-bayarcash.php';
-
-		// Enqueue JavaScript file
-		add_action('wp_enqueue_scripts', array('GF_BAYARCASH_Bootstrap', 'enqueue_scripts'));
+        	require_once GF_BAYARCASH_PLUGIN_PATH . '/bayarcash-gf-cron.php';
 
 		GFAddOn::register('GF_Bayarcash');
 		add_filter('plugin_action_links_' . plugin_basename(__FILE__), array('GF_BAYARCASH_Bootstrap', 'gf_bayarcash_setting_link'));
@@ -63,4 +61,3 @@ class GF_BAYARCASH_Bootstrap {
 		return array_merge($new_links, $links);
 	}
 }
-
