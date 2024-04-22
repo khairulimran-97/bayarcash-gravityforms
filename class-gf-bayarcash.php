@@ -43,7 +43,7 @@ class GF_Bayarcash extends GFPaymentAddOn {
     }
   
   public function init() {
-    add_filter( 'gform_disable_post_creation', array( $this, 'disable_post_creation' ), 10, 3 );
+    //add_filter( 'gform_disable_post_creation', array( $this, 'disable_post_creation' ), 10, 3 );
 
     $this->add_delayed_payment_support(
       array(
@@ -141,16 +141,6 @@ class GF_Bayarcash extends GFPaymentAddOn {
 		<?php
 		return ob_get_clean();
 	}
-
-  
-  
-  public function global_account_status_description() {
-    //Validate PAT & Portal Key
-  }
-  
-  public function global_validate_keys($old_value, $new_value, $option_name){
-    //Validate PAT & Portal Key
-  }
   
   public function feed_settings_fields() {
     $feed_settings_fields = parent::feed_settings_fields();
@@ -335,7 +325,6 @@ class GF_Bayarcash extends GFPaymentAddOn {
       }
     }
 
-    $currency  = rgar( $entry, 'currency' );
     $email     = rgar( $entry, $email_location );
     $notes     = rgar( $entry, $notes_location );
     $reference = rgar( $entry, $reference_location );
@@ -376,6 +365,7 @@ class GF_Bayarcash extends GFPaymentAddOn {
         'payment_gateway' => '1',
         'return_url' => $this->get_redirect_url( $redirect_url_args ),
         'portal_key' => $fpx_portal_key,
+        'buyer_tel_no' => NULL,
         
     ];
     
@@ -384,7 +374,7 @@ class GF_Bayarcash extends GFPaymentAddOn {
 
     // Perform any necessary processing or validation on the submission data, form, or entry
     
-    $payment = $bayarcash->create_payment( $postData );
+    $bayarcash->create_payment( $postData );
 
 }
 
@@ -407,40 +397,75 @@ class GF_Bayarcash extends GFPaymentAddOn {
     return plugins_url("assets/logo.svg", __FILE__);
 }
 
-
-  
   public function callback() {
+
     global $wpdb;
     $entry_id = intval( rgget( 'entry_id' ) );
-    //$this->log_debug( 'Started ' . __METHOD__ . "(): for entry id #" . $entry_id );
+    $this->log_debug( 'Started ' . __METHOD__ . "(): for entry id #" . $entry_id );
 
-    $entry           = GFAPI::get_entry( $entry_id );
-    $submission_feed = $this->get_payment_feed( $entry );
-    $bayarcash_payment_id = gform_get_meta( $entry_id, 'bayarcash_payment_id' );
-    
+    $entry                = GFAPI::get_entry( $entry_id );
+    $submission_feed      = $this->get_payment_feed( $entry );
+    $this->log_debug( __METHOD__ . "(): Entry ID #$entry_id is set to Feed ID #" . $submission_feed['id'] );
+
+    $configuration_type = rgars( $submission_feed, 'meta/bayarcashConfigurationType', 'global' );
+
+	  if ($gf_global_settings = get_option('gravityformsaddon_gravityformsbayarcash_settings')) {
+		  $pat_key        = rgar($gf_global_settings, 'pat_key');
+	  }
+
+	  if ($configuration_type == 'form') {
+		  $pat_key        = rgars($submission_feed, 'meta/pat_key');
+	  }
+
+      $redirect_url_args = array(
+          'callback' => $this->_slug,
+          'entry_id' => $entry_id,
+      );
+
+	  $target_return_url = $this->get_redirect_url( $redirect_url_args );
+
+      // Use GFBayarcashAPI to make a request to retrieve payment status
+      $fpx_portal_key = '';
+      $bayarcash = GFBayarcashAPI::get_instance( $fpx_portal_key, $pat_key );
+      $response = $bayarcash->get_payment($pat_key, $target_return_url);
+      $this->log_debug( 'Response: ' . print_r($response, true) );
+
+	  $exchange_order_no = null;
+      $fpx_amount = null;
+      $fpx_status = null;
+      $transaction_status_description = null;
+
+      if (!empty($response)) {
+          $exchange_order_no = $response['exchange_order_no'];
+          $fpx_amount = $response['fpx_amount'];
+          $fpx_status = $response['fpx_status'];
+          $transaction_status_description = $response['transaction_status_description'];
+      }
+
+      // Further processing based on the retrieved data
+      if (!empty($exchange_order_no)) {
+          // Update the bayarcash payment ID
+          gform_update_meta( $entry_id, 'bayarcash_payment_id', $exchange_order_no, rgar( $form, 'id' ) );
+          $this->log_debug( 'Bayarcash ID ' . __METHOD__ . "(): for bayarcash id #" . $exchange_order_no );
+
+          // Add new notes
+          $note2 = esc_html__( 'Payment Form Entry ID: ', 'gravityformsbayarcash' ) . $entry_id;
+          $note  = esc_html__( 'Exchange Reference Number: ', 'gravityformsbayarcash' ) . $exchange_order_no;
+          $note_message = $note2 . ' : ' . $note;
+
+          $wpdb->query(
+              $wpdb->prepare(
+                  "DELETE FROM wp_gf_entry_notes WHERE entry_id = %d AND (value LIKE %s OR value LIKE %s)",
+                  $entry_id,
+                  '%' . $wpdb->esc_like('Payment Form Entry ID:') . '%',
+                  '%' . $wpdb->esc_like('Payment is') . '%'
+              )
+          );
+
+          $this->add_note( $entry_id, $note_message, 'success' );
+      }
+
     //$this->log_debug( __METHOD__ . "(): Entry ID #$entry_id is set to Feed ID #" . $submission_feed['id'] );
-
-   if (isset($_POST['fpx_pre_transaction_data'])) {
-    $post_data = [
-        'order_ref_no' => $_POST['fpx_pre_transaction_data']['fpx_exchange_order_number'],
-        'order_no'     => $_POST['fpx_pre_transaction_data']['fpx_order_number'],
-    ];
-
-    if (empty($post_data['order_ref_no'])) {
-        return;
-    }
-    
-     // Store Bayarcash payment id
-    $order_ref_no = $post_data['order_ref_no']; // Get the value of order_ref_no
-    
-    gform_update_meta($entry_id, 'bayarcash_payment_id', $order_ref_no, rgar($form, 'id'));
-    $this->log_debug('Bayarcash ID ' . __METHOD__ . "(): for bayarcash id #" . $order_ref_no);
-    $note2 = esc_html__( 'Payment Form Entry ID: ', 'gravityformsbayarcash' ). $entry_id;
-    $note = esc_html__( 'Exchange Reference Number:  ', 'gravityformsbayarcash' ). $order_ref_no;
-    $this->add_note( $entry['id'], $note2, 'success' );
-    $this->add_note( $entry['id'], $note, 'success' );
-    
-    }
 
 
     if (isset($_POST['fpx_data'])) {
@@ -449,47 +474,30 @@ class GF_Bayarcash extends GFPaymentAddOn {
     if (!$is_portal_key_valid) {
         exit('Mismatched data.');
     }
-   
-   $post_data = [
-        'order_ref_no'                   => $_POST['order_ref_no'],
-        'order_no'                       => $_POST['order_no'],
-        'transaction_currency'           => $_POST['transaction_currency'],
-        'order_amount'                   => $_POST['order_amount'],
-        'buyer_name'                     => $_POST['buyer_name'],
-        'buyer_email'                    => $_POST['buyer_email'],
-        'buyer_bank_name'                => $_POST['buyer_bank_name'],
-        'transaction_status'             => $_POST['transaction_status'],
-        'transaction_status_description' => $_POST['transaction_status_description'],
-        'transaction_datetime'           => $_POST['transaction_datetime'],
-        'transaction_gateway_id'         => $_POST['transaction_gateway_id'],
-    ];
-   
-    $payment_status = $this->get_payment_status_name($post_data['transaction_status']);
-    $this->handlePayment($payment_status, $post_data);
-    
-    }
-    
-    $payment_status_bank = gform_get_meta( $entry_id, 'payment_status' );
-    $order_amount = gform_get_meta( $entry_id, 'order_amount' );
-    $transaction_status_description = gform_get_meta( $entry_id, 'transaction_status_description' );
-    
-    if ($payment_status_bank == 'Successful') {
-        $payment_status_message = 'Payment is successful, handle successful payment from here.';
-        $type = 'complete_payment';
+    $this->log_debug( __METHOD__ . "Portal Key" . $is_portal_key_valid );
     }
 
-    if ($payment_status_bank == 'Unsuccessful') {
-        $payment_status_message = 'Payment is unsuccessful, handle unsuccessful payment from here.';
-        $type = 'fail_payment';
+    $payment_status = $this->get_payment_status_name($fpx_status);
+    gform_update_meta($entry_id, 'payment_status', $payment_status);
+    $payment_status_bank = gform_get_meta( $entry_id, 'payment_status' );
+
+    if ($payment_status == 'Successful') {
+	    $payment_status_message = 'Payment is successful. ' . $transaction_status_description;
+	    $this->add_note( $entry_id, $payment_status_message, 'success' );
+        $type = 'complete_payment';
+    } else if ($payment_status_bank == 'Unsuccessful' || $payment_status_bank == 'Cancelled' ){
+	    $payment_status_message = 'Payment is Failed. ' . $transaction_status_description;
+	    $this->add_note( $entry_id, $payment_status_message, 'error' );
+	    $type = 'fail_payment';
     }
 
     $action = array(
-      'id'             => $bayarcash_payment_id,
+      'id'             => $exchange_order_no,
       'type'           => $type,
-      'transaction_id' => $bayarcash_payment_id,
+      'transaction_id' => $exchange_order_no,
       'entry_id'       => $entry_id,
       'payment_method' => 'FPX',
-      'amount'         => $order_amount,
+      'amount'         => $fpx_amount,
     );
 
     // Acquire lock to prevent concurrency
@@ -497,7 +505,7 @@ class GF_Bayarcash extends GFPaymentAddOn {
      "SELECT GET_LOCK('bayarcash_gf_payment', 15);"
    );
 
-   if ( $this->is_duplicate_callback( $bayarcash_payment_id ) ) {
+   if ( $this->is_duplicate_callback( $exchange_order_no ) ) {
      $action['abort_callback'] = 'true';
    }
 
@@ -507,7 +515,8 @@ class GF_Bayarcash extends GFPaymentAddOn {
 
 }
 
-public function post_callback( $callback_action, $result ) {
+public function post_callback( $callback_action, $result ): void
+{
     
     $this->log_debug( 'Start of ' . __METHOD__ . "(): for entry id: #" . $callback_action['entry_id'] );
 
@@ -604,46 +613,17 @@ public function post_callback( $callback_action, $result ) {
 
     $this->log_debug( __METHOD__ . "(): confirmation is non redirect type for entry id: #" . $entry_id );
   }
-  
-  
-  public function handlePayment($payment_status, $post_data )
+
+public function check_portal_key_valid($submission_feed): bool
 {
-    $post_response = print_r($post_data, true);
-
-    $payment_status = $this->get_payment_status_name($post_data['transaction_status']);
-
-    $order_ref_no = $post_data['order_ref_no'];
-    
-    $order_amount = $post_data['order_amount'];
-    $entry_id = $post_data['order_no'];
-    $transaction_gateway_id = $post_data['transaction_gateway_id'];
-    $transaction_datetime = $post_data['transaction_datetime'];
-    $transaction_status_description = $post_data['transaction_status_description'];
-    $buyer_bank_name = $post_data['buyer_bank_name'];
-    
-    $this->log_debug('Bayarcash Status Description ' . __METHOD__ . "(): " . $transaction_status_description);
-    $note3 = esc_html__( 'Bayarcash Status Description:  ', 'gravityformsbayarcash' ). $transaction_status_description;
-    $this->add_note( $entry_id, $note3, 'success' );
-    
-    gform_update_meta($entry_id, 'order_amount', $order_amount);
-    gform_update_meta($entry_id, 'transaction_gateway_id', $transaction_gateway_id);
-    gform_update_meta($entry_id, 'transaction_datetime', $transaction_datetime);
-    gform_update_meta($entry_id, 'transaction_status_description', $transaction_status_description);
-    gform_update_meta($entry_id, 'buyer_bank_name', $buyer_bank_name);
-    gform_update_meta($entry_id, 'payment_status', $payment_status);
-}
-
-public function check_portal_key_valid($submission_feed) {
     $configuration_type = rgars($submission_feed, 'meta/bayarcashConfigurationType', 'global');
 
     if ($gf_global_settings = get_option('gravityformsaddon_gravityformsbayarcash_settings')) {
         $fpx_portal_key = rgar($gf_global_settings, 'fpx_portal_key');
-        $pat_key        = rgar($gf_global_settings, 'pat_key');
     }
 
     if ($configuration_type == 'form') {
         $fpx_portal_key = rgars($submission_feed, 'meta/fpx_portal_key');
-        $pat_key        = rgars($submission_feed, 'meta/pat_key');
     }
 
     $fpx_hashed_data_from_portal = $_POST['fpx_data']; // Create a variable alias since we are going to remove $_POST['fpx_data'].
