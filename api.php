@@ -4,7 +4,7 @@
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
  */
-define ( "GF_BAYARCASH_ROOT_URL",  "https://console.bayarcash.dev");
+define ( "GF_BAYARCASH_ROOT_URL",  "https://console.bayar.cash");
 
 class GFBayarcashAPI
 {
