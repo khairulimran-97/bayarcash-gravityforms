@@ -24,13 +24,13 @@ add_action( 'gform_loaded', array( 'GF_BAYARCASH_Bootstrap', 'load_addon' ), 5 )
 add_action('admin_enqueue_scripts', 'enqueue_bayarcash_script');
 
 function enqueue_bayarcash_script() {
-	$js_file_path = plugin_dir_path(__FILE__) . 'bayarcash-script.js';
+	$js_file_path = plugin_dir_path(__FILE__) . 'admin/bayarcash-script.js';
 	wp_enqueue_style('font-awesome', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
 
 	// Check if the JavaScript file exists
 	if (file_exists($js_file_path)) {
 		// Enqueue the script if it exists
-		wp_enqueue_script('bayarcash-script', plugin_dir_url(__FILE__) . 'bayarcash-script.js', array('jquery'), null, true);
+		wp_enqueue_script('bayarcash-script', plugin_dir_url(__FILE__) . 'admin/bayarcash-script.js', array('jquery'), null, true);
 	} else {
 		// Log an error if the file doesn't exist
 		error_log('Bayarcash JavaScript file not found at: ' . $js_file_path);
@@ -42,7 +42,7 @@ class GF_BAYARCASH_Bootstrap {
 		// Include necessary PHP files
 		require_once GF_BAYARCASH_PLUGIN_PATH . '/api.php';
 		require_once GF_BAYARCASH_PLUGIN_PATH . '/class-gf-bayarcash.php';
-        	require_once GF_BAYARCASH_PLUGIN_PATH . '/bayarcash-gf-cron.php';
+        require_once GF_BAYARCASH_PLUGIN_PATH . '/admin/bayarcash-gf-cron.php';
 
 		GFAddOn::register('GF_Bayarcash');
 		add_filter('plugin_action_links_' . plugin_basename(__FILE__), array('GF_BAYARCASH_Bootstrap', 'gf_bayarcash_setting_link'));

@@ -74,11 +74,12 @@ class GF_Bayarcash extends GFPaymentAddOn {
     return array('MYR' => $currencies['MYR']);
   }
 
-  public function get_menu_icon() {
-    return plugins_url("assets/logo.svg", __FILE__);
-  }
-  
-   public function plugin_settings_fields() {
+    public function get_menu_icon() {
+        return plugins_url("assets/logo.svg", __FILE__);
+    }
+
+
+    public function plugin_settings_fields() {
     $configuration = array(
       array(
         'title'       => esc_html__( 'Bayarcash', 'gravityformsbayarcash' ),
@@ -112,7 +113,8 @@ class GF_Bayarcash extends GFPaymentAddOn {
     return ob_get_clean();
   }
 
-	public function global_keys_fields() {
+	public function global_keys_fields(): array
+    {
 		return array(
 			array(
 				'name'     => 'pat_key',
@@ -256,7 +258,8 @@ class GF_Bayarcash extends GFPaymentAddOn {
   }
   
   // This method must return empty array to prevent option from showing in feeds settings
-  public function option_choices() {
+  public function option_choices(): array
+  {
     return array();
   }
   
@@ -264,7 +267,8 @@ class GF_Bayarcash extends GFPaymentAddOn {
 
     $client_info_fields = array(
       array( 'name' => 'email',     'label' => esc_html__( 'Email', 'gravityformsbayarcash' ), 'required' => true ),
-      array( 'name' => 'full_name', 'label' => esc_html__( 'Full Name', 'gravityformsbayarcash' ), 'required' => false ),
+      array( 'name' => 'full_name', 'label' => esc_html__( 'Full Name', 'gravityformsbayarcash' ), 'required' => true ),
+      array( 'name' => 'phone', 'label' => esc_html__( 'Phone Number', 'gravityformsbayarcash' ), 'required' => false ),
     );
 
     return apply_filters( 'gf_bayarcash_client_info_fields', $client_info_fields );
@@ -278,7 +282,8 @@ class GF_Bayarcash extends GFPaymentAddOn {
     return apply_filters( 'gf_bayarcash_purchase_info_fields', $purchase_info_fields );
   }
   
-  public function redirect_url($feed, $submission_data, $form, $entry) {
+  public function redirect_url($feed, $submission_data, $form, $entry): void
+  {
       
     $entry_id = $entry['id'];
     
@@ -289,6 +294,7 @@ class GF_Bayarcash extends GFPaymentAddOn {
     $payment_amount_location = rgars( $feed, 'meta/paymentAmount'); // location for payment amount
     $name_location           = rgars( $feed, 'meta/clientInformation_full_name'); // location for buyer name
     $email_location          = rgars( $feed, 'meta/clientInformation_email'); // location for buyer email address
+    $phone_location           = rgars( $feed, 'meta/clientInformation_phone');
     $notes_location          = rgars( $feed, 'meta/purchaseInformation_notes'); // location for purchase notes
     $reference_location      = rgars( $feed, 'meta/miscellaneous_reference'); // location for reference
 
@@ -326,6 +332,7 @@ class GF_Bayarcash extends GFPaymentAddOn {
     }
 
     $email     = rgar( $entry, $email_location );
+    $phone     = rgar($entry, $phone_location);
     $notes     = rgar( $entry, $notes_location );
     $reference = rgar( $entry, $reference_location );
     $full_name = rgar( $entry, $name_location, '' );
@@ -365,7 +372,7 @@ class GF_Bayarcash extends GFPaymentAddOn {
         'payment_gateway' => '1',
         'return_url' => $this->get_redirect_url( $redirect_url_args ),
         'portal_key' => $fpx_portal_key,
-        'buyer_tel_no' => NULL,
+        'buyer_tel_no' => str_replace('+', '', $phone),
         
     ];
     
@@ -378,23 +385,17 @@ class GF_Bayarcash extends GFPaymentAddOn {
 
 }
 
- public function get_redirect_url($args = array()) {
+ public function get_redirect_url($args = array()): string
+ {
     return add_query_arg(
       $args, 
       home_url( '/' ) 
     );
   }
   
-  public function get_timezone(){
-    if ( preg_match( '/^[A-z]+\/[A-z\_\/\-]+$/', wp_timezone_string() ) ) {
-      return wp_timezone_string();
-    }
-
-    return 'UTC';
-  }
-  
- public function note_avatar() {
-    return plugins_url("assets/logo.svg", __FILE__);
+ public function note_avatar()
+ {
+     return plugins_url("assets/logo.svg", __FILE__);
 }
 
   public function callback() {
@@ -430,27 +431,27 @@ class GF_Bayarcash extends GFPaymentAddOn {
       $response = $bayarcash->get_payment($pat_key, $target_return_url);
       $this->log_debug( 'Response: ' . print_r($response, true) );
 
-	  $exchange_order_no = null;
-      $fpx_amount = null;
-      $fpx_status = null;
-      $transaction_status_description = null;
+      $exchangeOrderNo = null;
+      $fpxAmount = null;
+      $fpxStatus = null;
+      $transactionStatusDescription = null;
 
       if (!empty($response)) {
-          $exchange_order_no = $response['exchange_order_no'];
-          $fpx_amount = $response['fpx_amount'];
-          $fpx_status = $response['fpx_status'];
-          $transaction_status_description = $response['transaction_status_description'];
+          $exchangeOrderNo = $response['exchangeOrderNo'];
+          $fpxAmount = $response['fpxAmount'];
+          $fpxStatus = $response['fpxStatus'];
+          $transactionStatusDescription = $response['transactionStatusDescription'];
       }
 
       // Further processing based on the retrieved data
-      if (!empty($exchange_order_no)) {
+      if (!empty($exchangeOrderNo)) {
           // Update the bayarcash payment ID
-          gform_update_meta( $entry_id, 'bayarcash_payment_id', $exchange_order_no, rgar( $form, 'id' ) );
-          $this->log_debug( 'Bayarcash ID ' . __METHOD__ . "(): for bayarcash id #" . $exchange_order_no );
+          gform_update_meta( $entry_id, 'bayarcash_payment_id', $exchangeOrderNo, rgar( $form, 'id' ) );
+          $this->log_debug( 'Bayarcash ID ' . __METHOD__ . "(): for bayarcash id #" . $exchangeOrderNo );
 
           // Add new notes
           $note2 = esc_html__( 'Payment Form Entry ID: ', 'gravityformsbayarcash' ) . $entry_id;
-          $note  = esc_html__( 'Exchange Reference Number: ', 'gravityformsbayarcash' ) . $exchange_order_no;
+          $note  = esc_html__( 'Exchange Reference Number: ', 'gravityformsbayarcash' ) . $exchangeOrderNo;
           $note_message = $note2 . ' : ' . $note;
 
           $wpdb->query(
@@ -477,27 +478,27 @@ class GF_Bayarcash extends GFPaymentAddOn {
     $this->log_debug( __METHOD__ . "Portal Key" . $is_portal_key_valid );
     }
 
-    $payment_status = $this->get_payment_status_name($fpx_status);
+    $payment_status = $this->get_payment_status_name($fpxStatus);
     gform_update_meta($entry_id, 'payment_status', $payment_status);
     $payment_status_bank = gform_get_meta( $entry_id, 'payment_status' );
 
     if ($payment_status == 'Successful') {
-	    $payment_status_message = 'Payment is successful. ' . $transaction_status_description;
+	    $payment_status_message = 'Payment is successful. ' . $transactionStatusDescription;
 	    $this->add_note( $entry_id, $payment_status_message, 'success' );
         $type = 'complete_payment';
     } else if ($payment_status_bank == 'Unsuccessful' || $payment_status_bank == 'Cancelled' ){
-	    $payment_status_message = 'Payment is Failed. ' . $transaction_status_description;
+	    $payment_status_message = 'Payment is Failed. ' . $transactionStatusDescription;
 	    $this->add_note( $entry_id, $payment_status_message, 'error' );
 	    $type = 'fail_payment';
     }
 
     $action = array(
-      'id'             => $exchange_order_no,
+      'id'             => $exchangeOrderNo,
       'type'           => $type,
-      'transaction_id' => $exchange_order_no,
+      'transaction_id' => $exchangeOrderNo,
       'entry_id'       => $entry_id,
       'payment_method' => 'FPX',
-      'amount'         => $fpx_amount,
+      'amount'         => $fpxAmount,
     );
 
     // Acquire lock to prevent concurrency
@@ -505,7 +506,7 @@ class GF_Bayarcash extends GFPaymentAddOn {
      "SELECT GET_LOCK('bayarcash_gf_payment', 15);"
    );
 
-   if ( $this->is_duplicate_callback( $exchange_order_no ) ) {
+   if ( $this->is_duplicate_callback( $exchangeOrderNo ) ) {
      $action['abort_callback'] = 'true';
    }
 

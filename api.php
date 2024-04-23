@@ -1,105 +1,126 @@
 <?php
 
-/*
+/**
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
  */
-
-define("GF_BAYARCASH_ROOT_URL", "https://console.bayarcash.dev");
+define ( "GF_BAYARCASH_ROOT_URL",  "https://console.bayarcash.dev");
 
 class GFBayarcashAPI
 {
-    private static $_instance;
+    private static ?self $_instance = null;
+    private string $postalKey;
+    private string $pat;
 
-    public static function get_instance($fpx_portal_key, $pat_key): GFBayarcashAPI
+    private function __construct(string $fpxPortalKey, string $patKey)
     {
-        if (self::$_instance == null) {
-            self::$_instance = new self($fpx_portal_key, $pat_key);
+        $this->postalKey = $fpxPortalKey;
+        $this->pat = $patKey;
+    }
+
+    public static function get_instance(string $fpxPortalKey, string $patKey): self
+    {
+        if (self::$_instance === null) {
+            self::$_instance = new self($fpxPortalKey, $patKey);
         }
 
         return self::$_instance;
     }
 
-    public function __construct($fpx_portal_key, $pat_key)
+    public static function verifyToken(string $patKey): bool
     {
-        $this->postal_key = $fpx_portal_key;
-        $this->pat = $pat_key;
+        $args = [
+            'headers' => [
+                'Accept' => 'application/json',
+                'Authorization' => 'Bearer ' . $patKey
+            ],
+        ];
+
+        $response = wp_remote_post(GF_BAYARCASH_ROOT_URL . '/api/transactions', $args);
+
+        if (is_wp_error($response)) {
+            return false;
+        }
+
+        $httpStatus = wp_remote_retrieve_response_code($response);
+
+        return $httpStatus === 200;
     }
 
-    public function create_payment($postData): void
+    public function create_payment(array $postData): void
     {
-    $redirectUrl = GF_BAYARCASH_ROOT_URL . '/transactions/add';
-
-    $this->submitForm($redirectUrl, $postData);
+        $redirectUrl = GF_BAYARCASH_ROOT_URL . '/transactions/add';
+        $this->submitForm($redirectUrl, $postData);
     }
 
-    private function submitForm($url, $postData)
+    private function submitForm(string $url, array $postData): void
     {
-    echo '<form id="redirectForm" action="' . htmlspecialchars($url) . '" method="post">';
-    foreach ($postData as $key => $value) {
-        echo '<input type="hidden" name="' . htmlspecialchars($key) . '" value="' . htmlspecialchars($value) . '">';
-    }
-    echo '</form>';
-    echo '<script>document.getElementById("redirectForm").submit();</script>';
-    exit;
+        echo '<form id="redirectForm" action="' . htmlspecialchars($url) . '" method="post">';
+        foreach ($postData as $key => $value) {
+            echo '<input type="hidden" name="' . htmlspecialchars($key) . '" value="' . htmlspecialchars($value) . '">';
+        }
+        echo '</form>';
+        echo '<script>document.getElementById("redirectForm").submit();</script>';
+        exit;
     }
 
-    public function get_payment($pat_key, $target_return_url)
+    public function get_payment(string $patKey, string $targetReturnUrl): array
     {
-        $curl = curl_init();
+        $args = [
+            'headers' => [
+                'Accept' => 'application/json',
+                'Authorization' => 'Bearer ' . $patKey
+            ],
+        ];
 
-        curl_setopt_array($curl, array(
-            CURLOPT_URL => 'https://console.bayarcash.dev/api/transactions',
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => '',
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 0,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => 'POST',
-            CURLOPT_HTTPHEADER => array(
-                'Accept: application/json',
-                "Authorization: Bearer $pat_key"
-            ),
-        ));
+        $response = wp_remote_post(GF_BAYARCASH_ROOT_URL . '/api/transactions', $args);
 
-        $response = curl_exec($curl);
+        if (is_wp_error($response)) {
+            return [
+                'exchangeOrderNo' => null,
+                'fpxAmount' => null,
+                'fpxStatus' => null,
+                'transactionStatusDescription' => null
+            ];
+        }
 
-        curl_close($curl);
+        $body = wp_remote_retrieve_body($response);
+        $decodedResponse = json_decode($body, true);
 
-        $response = json_decode($response, true);
+        $exchangeOrderNo = null;
+        $fpxAmount = null;
+        $fpxStatus = null;
+        $transactionStatusDescription = null;
 
-        $target_record_id = null;
-        $exchange_order_no = null;
-        $fpx_amount = null;
-        $fpx_status = null;
-        $transaction_status_description = null;
-
-        foreach ($response['output']['transactionsList']['recordsListData'] as $record) {
-            if ($record['return_url'] === $target_return_url) {
-                $target_record_id = $record['id'];
+        foreach ($decodedResponse['output']['transactionsList']['recordsListData'] as $record) {
+            if ($record['return_url'] === $targetReturnUrl) {
+                $exchangeOrderNo = $record['exchange_order_no'];
+                $fpxAmount = $record['amount'];
+                $fpxStatus = $record['status'];
+                $transactionStatusDescription = $record['status_description'];
                 break;
             }
         }
 
-        if ($target_record_id !== null) {
-            foreach ( $response['output']['transactionsList']['recordsListData'] as $record ) {
-                if ( $record['id'] === $target_record_id ) {
-                    $exchange_order_no = $record['exchange_order_no'];
-                    $fpx_amount = $record['amount'];
-                    $fpx_status = $record['status'];
-                    $transaction_status_description = $record['status_description'];
-                    break;
-                }
-            }}
-
-        // Returning relevant data
-        return array(
-            'exchange_order_no' => $exchange_order_no,
-            'fpx_amount' => $fpx_amount,
-            'fpx_status' => $fpx_status,
-            'transaction_status_description' => $transaction_status_description
-        );
+        return [
+            'exchangeOrderNo' => $exchangeOrderNo,
+            'fpxAmount' => $fpxAmount,
+            'fpxStatus' => $fpxStatus,
+            'transactionStatusDescription' => $transactionStatusDescription
+        ];
     }
+}
 
+// Handle AJAX request
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $data = json_decode(file_get_contents("php://input"), true);
+
+    if (isset($data['patKey'])) {
+        $patKey = $data['patKey'];
+        $tokenValid = GFBayarcashAPI::verifyToken($patKey);
+
+        header('Content-Type: application/json');
+        echo json_encode(['success' => $tokenValid]);
+        exit;
+    }
 }
