@@ -13,14 +13,17 @@ This module adds Bayarcash payment method option to your Gravity Forms.
 
 Set the **Personal Access Token (PAT)** and **Portal Key** in the plugins settings.
 
-<img width="881" alt="image" src="https://github.com/webimpian-fintech/bayarcash-gravityforms/assets/66111282/a001407d-ee22-4f41-8bc3-69a4a721094c">
+![image](https://github.com/khairulimran-97/bayarcash-gravityforms/assets/105085586/f2f534dc-f3ec-4a66-b6c2-6c225ff6a429)
 
 
 ### Form-specific Configuration
 
 You can override the Global Configuration by setting in the Form specific configuraiton.
 
-<img width="1170" alt="image" src="https://github.com/webimpian-fintech/bayarcash-gravityforms/assets/66111282/0c855eca-9cb1-4276-97f9-c200f45b605a">
+![image](https://github.com/khairulimran-97/bayarcash-gravityforms/assets/105085586/9620931d-b8e1-4a5a-8b6c-db9271638056)
 
-<img width="800" alt="image" src="https://github.com/webimpian-fintech/bayarcash-gravityforms/assets/66111282/d743716e-7020-4938-8ad1-74b10b9b5a91">
-<img width="800" alt="image" src="https://github.com/webimpian-fintech/bayarcash-gravityforms/assets/66111282/e7a5a395-1d5b-4504-861f-2107a2eb84ba">
+
+![image](https://github.com/khairulimran-97/bayarcash-gravityforms/assets/105085586/a8929678-82b2-4e1c-9160-7a7b6715f83d)
+
+![image](https://github.com/khairulimran-97/bayarcash-gravityforms/assets/105085586/7d55ecf0-602e-433e-b89d-733749d9cbe0)
+
